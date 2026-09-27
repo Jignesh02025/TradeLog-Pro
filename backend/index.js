@@ -139,7 +139,7 @@ app.post('/api/chat', async (req, res) => {
     if (!history || history.length === 0) {
       const cacheResult = await pool.query(
         'SELECT answer FROM ai_chat_cache WHERE user_id = $1 AND question = $2 LIMIT 1',
-        [userId, question.trim()]
+        [userId, question ? question.trim() : '']
       );
 
       if (cacheResult.rows.length > 0) {
@@ -215,7 +215,7 @@ app.post('/api/chat', async (req, res) => {
     
     // Pair Analysis (Most and Least Traded)
     const pairAnalysis = trades.reduce((acc, t) => {
-      const p = t.pair.trim().toUpperCase();
+      const p = (t.pair || 'Unknown').trim().toUpperCase();
       if (!acc[p]) acc[p] = { count: 0, profit: 0 };
       acc[p].count += 1;
       acc[p].profit += Number(t.profit_loss);
