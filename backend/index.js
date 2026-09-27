@@ -355,7 +355,7 @@ Provide a direct answer.
 
   } catch (error) {
     console.error('CHAT ERROR:', error);
-    res.status(500).json({ error: 'Failed to process chat request' });
+    res.status(500).json({ error: 'Failed to process chat request: ' + (error.message || 'Unknown error') });
   }
 });
 
