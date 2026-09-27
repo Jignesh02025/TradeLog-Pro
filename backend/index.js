@@ -76,7 +76,7 @@ app.post('/api/query', async (req, res) => {
         { role: 'system', content: GROQ_SYSTEM_PROMPT },
         { role: 'user', content: question },
       ],
-      model: 'openai/gpt-oss-120b',
+      model: 'llama-3.3-70b-versatile',
       temperature: 0,
     });
 
@@ -107,7 +107,7 @@ app.post('/api/query', async (req, res) => {
           content: `Question: ${question}\nData: ${JSON.stringify(result.rows)}` 
         },
       ],
-      model: 'openai/gpt-oss-120b',
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.5,
     });
 
@@ -324,7 +324,7 @@ Provide a direct answer.
 
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: 'openai/gpt-oss-120b',
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 200,
       temperature: 0.4,
     });
