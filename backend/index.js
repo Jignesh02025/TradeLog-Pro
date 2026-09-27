@@ -36,21 +36,12 @@ const groq = new Groq({
 });
 
 // Robust database connection using connection string (best for Vercel + Supabase Pooler)
-const pool = new Pool(
-  process.env.DATABASE_URL 
-    ? { 
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
-      } 
-    : {
-        user: process.env.DB_USER || 'postgres',
-        host: process.env.DB_HOST || 'localhost',
-        database: process.env.DB_NAME || 'postgres',
-        password: process.env.DB_PASSWORD,
-        port: parseInt(process.env.DB_PORT || '5432'),
-        ssl: { rejectUnauthorized: false }
-      }
-);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+console.log('Using DATABASE_URL connection:', !!process.env.DATABASE_URL);
 
 const GROQ_SYSTEM_PROMPT = `
 You are a SQL expert for a Trading Journal application.
