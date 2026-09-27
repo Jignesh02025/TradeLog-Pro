@@ -21,11 +21,10 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173',  // Vite dev server
-    'http://localhost:4173',  // Vite preview
-    'http://localhost:3000',  // fallback
-  ],
+  origin: function(origin, callback) {
+    // Allow all origins to connect (helpful when testing deployed frontend)
+    callback(null, true);
+  },
   credentials: true,
 }));
 app.use(helmet());

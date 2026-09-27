@@ -95,7 +95,8 @@ const AIChat = () => {
     setImagePreview(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/chat', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -127,7 +128,8 @@ const AIChat = () => {
   const handleBulkAdd = async (trades) => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/trades/bulk', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/trades/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id, trades }),
