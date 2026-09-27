@@ -6,6 +6,7 @@ import TradeList from './pages/TradeList'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import ConnectMT5 from './pages/ConnectMT5'
+import TradeDetailsPage from './pages/TradeDetailsPage'
 import Auth from './pages/Auth'
 import ImportModal from './components/ImportModal'
 import useTrades from './hooks/useTrades'
@@ -15,6 +16,7 @@ import AIChat from './components/AIChat'
 
 const AppContent = () => {
   const [page, setPage] = useState('dashboard')
+  const [navData, setNavData] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   
@@ -24,8 +26,9 @@ const AppContent = () => {
     deleteTrade, importTrades, clearAllTrades, stats, loading: tradesLoading 
   } = useTrades()
 
-  const navigate = (p) => {
+  const navigate = (p, data = null) => {
     setPage(p)
+    setNavData(data)
     setSidebarOpen(false)
   }
 
@@ -48,7 +51,9 @@ const AppContent = () => {
       case 'add-trade':
         return <AddTrade onAdd={addTrade} />
       case 'trades':
-        return <TradeList trades={trades} settings={settings} onUpdate={updateTrade} onDelete={deleteTrade} />
+        return <TradeList trades={trades} settings={settings} onUpdate={updateTrade} onDelete={deleteTrade} onNavigate={navigate} />
+      case 'view-trade':
+        return <TradeDetailsPage trade={navData} settings={settings} onBack={() => navigate('trades')} />
       case 'analytics':
         return <Analytics trades={trades} stats={stats} settings={settings} />
       case 'settings':

@@ -70,7 +70,7 @@ function useTrades() {
           riskReward: t.risk_reward ? Number(t.risk_reward) : 0,
           tradeResult: t.trade_result,
           notes: t.notes || '',
-          screenshotUrl: t.screenshot_url || '',
+          screenshots: t.screenshot_url ? t.screenshot_url.split(',') : [],
           createdAt: t.created_at
         }))
         console.log('[FRONTEND] Fetched trades from Supabase:', mapped)
@@ -123,7 +123,7 @@ function useTrades() {
       risk_reward: rr,
       trade_result: tradeResult,
       notes: form.notes.trim(),
-      screenshot_url: form.screenshot || null,
+      screenshot_url: form.screenshots && form.screenshots.length > 0 ? form.screenshots.join(',') : null,
     }
 
     const { data, error } = await supabase
@@ -154,7 +154,7 @@ function useTrades() {
       riskReward: Number(data.risk_reward),
       tradeResult: data.trade_result,
       notes: data.notes || '',
-      screenshotUrl: data.screenshot_url || '',
+      screenshots: data.screenshot_url ? data.screenshot_url.split(',') : [],
       createdAt: data.created_at
     }
 
@@ -202,7 +202,7 @@ function useTrades() {
       risk_reward: rr,
       trade_result: tradeResult,
       notes: form.notes.trim(),
-      screenshot_url: form.screenshot || null
+      screenshot_url: form.screenshots && form.screenshots.length > 0 ? form.screenshots.join(',') : null
     }
 
     const { error } = await supabase
@@ -232,7 +232,7 @@ function useTrades() {
             riskReward: rr,
             tradeResult,
             notes: form.notes.trim(),
-            screenshotUrl: form.screenshot || ''
+            screenshots: form.screenshots || []
           }
         : t
     ))

@@ -17,7 +17,7 @@ const EMPTY = {
   manualOverride: false,
   tradeResult: '',
   notes: '',
-  screenshot: '',
+  screenshots: [],
 }
 
 function validate(form) {
@@ -64,7 +64,7 @@ const TradeForm = ({ initialData, onSubmit, onCancel, isModal }) => {
         manualOverride: initialData.manualOverride || false,
         tradeResult: initialData.tradeResult || '',
         notes: initialData.notes || '',
-        screenshot: initialData.screenshotUrl || '',
+        screenshots: initialData.screenshots || [],
       })
     } else {
       setForm(EMPTY)
@@ -81,27 +81,38 @@ const TradeForm = ({ initialData, onSubmit, onCancel, isModal }) => {
   }
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setUploadingImage(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-
+    
     try {
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-        method: 'POST',
-        body: formData,
+      const uploadPromises = files.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+        
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        return data.secure_url;
       });
-      const data = await res.json();
-      if (data.secure_url) {
-        setForm(prev => ({ ...prev, screenshot: data.secure_url }));
+
+      const urls = await Promise.all(uploadPromises);
+      const validUrls = urls.filter(url => Boolean(url));
+      
+      if (validUrls.length > 0) {
+        setForm(prev => ({ 
+          ...prev, 
+          screenshots: [...(prev.screenshots || []), ...validUrls] 
+        }));
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      console.error('Error uploading images:', error);
+      alert('Failed to upload images. Please try again.');
     } finally {
       setUploadingImage(false);
     }
@@ -288,53 +299,65 @@ const TradeForm = ({ initialData, onSubmit, onCancel, isModal }) => {
         </div>
       </div>
 
-      {/* Screenshot Upload */}
+      {/* Screenshots Upload */}
       <div style={{ marginTop: 24 }}>
-        <label className="form-label">Trade Screenshot (optional)</label>
+        <label className="form-label">Trade Screenshots (optional)</label>
+        
+        {form.screenshots && form.screenshots.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 12 }}>
+            {form.screenshots.map((url, idx) => (
+              <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                <img src={url} alt={`Screenshot ${idx+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newScreenshots = [...form.screenshots];
+                    newScreenshots.splice(idx, 1);
+                    setForm(prev => ({ ...prev, screenshots: newScreenshots }));
+                  }}
+                  style={{
+                    position: 'absolute', top: 6, right: 6,
+                    background: 'rgba(0,0,0,0.7)', border: 'none', color: 'white',
+                    borderRadius: '50%', width: 24, height: 24,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{
           border: '1px dashed var(--border-color)',
           borderRadius: 12,
-          padding: form.screenshot ? 12 : 24,
+          padding: 24,
           textAlign: 'center',
           background: 'rgba(255,255,255,0.01)',
           position: 'relative',
           overflow: 'hidden'
         }}>
           {uploadingImage ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 10 }}>
               <Loader2 size={24} style={{ color: 'var(--accent-blue)', animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Uploading to Cloudinary...</span>
-            </div>
-          ) : form.screenshot ? (
-            <div style={{ position: 'relative' }}>
-              <img src={form.screenshot} alt="Trade Screenshot" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }} />
-              <button
-                type="button"
-                onClick={() => setForm(prev => ({ ...prev, screenshot: '' }))}
-                style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white',
-                  borderRadius: '50%', width: 28, height: 28,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer'
-                }}
-              >
-                <X size={14} />
-              </button>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Uploading images...</span>
             </div>
           ) : (
             <div>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 style={{
-                  position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%'
+                  position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%', zIndex: 10
                 }}
               />
-              <ImagePlus size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Click to upload screenshot</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>PNG, JPG up to 10MB</div>
+              <ImagePlus size={28} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Click to upload screenshots</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>You can select multiple images</div>
             </div>
           )}
         </div>

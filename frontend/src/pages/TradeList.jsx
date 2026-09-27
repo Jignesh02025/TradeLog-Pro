@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Search, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ChevronDown, AlertCircle, X, Image as ImageIcon } from 'lucide-react'
+import { Search, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ChevronDown, AlertCircle, X, Image as ImageIcon, Eye } from 'lucide-react'
 import { format } from 'date-fns'
 import TradeForm from '../components/TradeForm'
 import { convertCurrency, formatCurrency } from '../utils/currencyUtils'
@@ -13,7 +13,7 @@ const EMPTY_FILTER = {
   maxProfitLoss: ''
 }
 
-const TradeList = ({ trades, settings, onUpdate, onDelete }) => {
+const TradeList = ({ trades, settings, onUpdate, onDelete, onNavigate }) => {
   const [filter, setFilter] = useState(EMPTY_FILTER)
   const [editTrade, setEditTrade] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -162,11 +162,9 @@ const TradeList = ({ trades, settings, onUpdate, onDelete }) => {
                             <AlertCircle size={14} />
                           </button>
                           <div className="action-btns-desktop" style={{ display: 'flex', gap: 6 }}>
-                            {t.screenshotUrl && (
-                              <button className="btn-edit" onClick={() => window.open(t.screenshotUrl, '_blank')} title="View Screenshot">
-                                <ImageIcon size={12} />
-                              </button>
-                            )}
+                            <button className="btn-edit" onClick={() => onNavigate('view-trade', t)} title="View Trade Details">
+                              <Eye size={12} />
+                            </button>
                             <button className="btn-edit" onClick={() => setEditTrade(t)}><Pencil size={12} /></button>
                             <button className="btn-danger" onClick={() => setDeleteConfirm(t.id)}><Trash2 size={12} /></button>
                           </div>
