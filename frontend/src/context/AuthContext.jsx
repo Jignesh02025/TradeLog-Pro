@@ -27,6 +27,9 @@ export const AuthProvider = ({ children }) => {
       setUser(u)
       if (u) fetchProfile(u.id)
       setLoading(false)
+    }).catch(err => {
+      console.error('Error getting Supabase session:', err)
+      setLoading(false)
     })
 
     // Listen for auth changes

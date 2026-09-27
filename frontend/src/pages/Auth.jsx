@@ -4,6 +4,7 @@ import { TrendingUp, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true)
+  const [isResetMode, setIsResetMode] = useState(false)
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,7 +16,14 @@ const Auth = () => {
     setError(null)
 
     try {
-      if (isLogin) {
+      if (isResetMode) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        })
+        if (error) throw error
+        alert('Password reset link sent! Check your email.')
+        setIsResetMode(false)
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       } else {
@@ -50,7 +58,7 @@ const Auth = () => {
             Trade<span className="gradient-text">Log</span> Pro
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 8 }}>
-            {isLogin ? 'Welcome back, trader' : 'Start your professional journal'}
+            {isResetMode ? 'Reset your password' : (isLogin ? 'Welcome back, trader' : 'Start your professional journal')}
           </p>
         </div>
 
@@ -76,30 +84,57 @@ const Auth = () => {
             </div>
           </div>
 
-          <div>
-            <label className="form-label" style={{ fontSize: 12 }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="password" required className="form-input" style={{ paddingLeft: 42 }}
-                placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
-              />
+          {!isResetMode && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" style={{ fontSize: 12 }}>Password</label>
+                {isLogin && (
+                  <button 
+                    type="button"
+                    onClick={() => setIsResetMode(true)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', fontSize: 12, cursor: 'pointer', padding: 0 }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="password" required={!isResetMode} className="form-input" style={{ paddingLeft: 42 }}
+                  placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <button type="submit" className="btn-primary" style={{ marginTop: 8, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }} disabled={loading}>
-            {loading ? <Loader2 size={18} className="spinner" style={{ animation: 'spin 1s linear infinite' }} /> : (isLogin ? 'Sign In' : 'Create Account')}
+            {loading ? <Loader2 size={18} className="spinner" style={{ animation: 'spin 1s linear infinite' }} /> : 
+              (isResetMode ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Create Account'))}
           </button>
         </form>
 
         <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
-          <button 
-            onClick={() => setIsLogin(!isLogin)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', fontWeight: 600, cursor: 'pointer' }}
-          >
-            {isLogin ? 'Sign Up' : 'Log In'}
-          </button>
+          {isResetMode ? (
+            <button 
+              type="button"
+              onClick={() => setIsResetMode(false)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Back to Login
+            </button>
+          ) : (
+            <>
+              {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+              <button 
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {isLogin ? 'Sign Up' : 'Log In'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
