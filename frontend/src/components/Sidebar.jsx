@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   LayoutDashboard, PlusCircle, List, BarChart2,
-  Settings, UploadCloud, LogOut, TrendingUp, User as UserIcon, Zap, ChevronRight
+  Settings, UploadCloud, LogOut, TrendingUp, User as UserIcon, Zap, ChevronRight, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -20,6 +20,7 @@ const Sidebar = ({ activePage, onNavigate, onOpenImport }) => {
     { id: 'import',      label: 'Import CSV',  icon: UploadCloud, action: onOpenImport, color: '#60a5fa' },
     { id: 'connect-mt5', label: 'Connect MT5', icon: Zap,          color: '#f97316' },
     { id: 'settings',    label: 'Settings',    icon: Settings,     color: '#94a3b8' },
+    { id: 'help',        label: 'Help & Guide',icon: HelpCircle,   color: '#34d399' },
   ]
 
   return (

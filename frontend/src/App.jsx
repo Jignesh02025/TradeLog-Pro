@@ -7,6 +7,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import ConnectMT5 from './pages/ConnectMT5'
 import TradeDetailsPage from './pages/TradeDetailsPage'
+import HelpGuide from './pages/HelpGuide'
 import Auth from './pages/Auth'
 import ImportModal from './components/ImportModal'
 import useTrades from './hooks/useTrades'
@@ -58,6 +59,8 @@ const AppContent = () => {
         return <Analytics trades={trades} stats={stats} settings={settings} />
       case 'settings':
         return <Settings settings={settings} onUpdateSettings={setSettings} onClearData={clearAllTrades} />
+      case 'help':
+        return <HelpGuide />
       case 'connect-mt5':
         return <ConnectMT5 />
       default:
