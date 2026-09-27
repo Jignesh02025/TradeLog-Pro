@@ -15,9 +15,19 @@ export const AuthProvider = ({ children }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
       
-      if (!error) setProfile(data)
+      if (data) {
+        setProfile(data)
+      } else if (!error) {
+        // Create profile if it doesn't exist
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .insert([{ id: userId, name: 'Trader', account_currency: 'USD' }])
+          .select()
+          .single()
+        if (newProfile) setProfile(newProfile)
+      }
     }
 
     // Get initial session
