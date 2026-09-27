@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Bot, Loader2, Plus } from 'lucide-react';
+import { MessageCircle, Send, X, Bot, Loader2, Plus, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AIChat = () => {
@@ -11,6 +11,39 @@ const AIChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  const handleImageSelect = (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        handleImageSelect(items[i].getAsFile());
+        break;
+      }
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleImageSelect(e.dataTransfer.files[0]);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -21,16 +54,45 @@ const AIChat = () => {
   const handleSend = async (e, suggestion) => {
     if (e) e.preventDefault();
     const userMessage = suggestion || input;
-    if (!userMessage) return;
+    if (!userMessage && !imageFile) return;
+
+    let imageUrl = null;
+    setIsLoading(true);
+
+    // Upload image if exists
+    if (imageFile) {
+      try {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.secure_url) {
+          imageUrl = data.secure_url;
+        }
+      } catch (err) {
+        console.error('Image upload failed', err);
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Failed to upload image.' }]);
+        setIsLoading(false);
+        return;
+      }
+    }
 
     const newMessage = { 
       role: 'user', 
-      content: userMessage, 
+      content: userMessage,
+      image: imageUrl
     };
     
     setMessages(prev => [...prev, newMessage]);
     setInput('');
-    setIsLoading(true);
+    setImageFile(null);
+    setImagePreview(null);
 
     try {
       const response = await fetch('http://localhost:5000/api/chat', {
@@ -39,7 +101,8 @@ const AIChat = () => {
         body: JSON.stringify({ 
           question: userMessage, 
           userId: user?.id,
-          history: messages.slice(1)
+          history: messages.slice(1),
+          imageUrl: imageUrl
         }),
       });
 
@@ -138,7 +201,12 @@ const AIChat = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div 
+        ref={scrollRef} 
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}
+      >
         {messages.map((msg, i) => (
           <div key={i} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{
@@ -146,7 +214,12 @@ const AIChat = () => {
               background: msg.role === 'user' ? '#3b82f6' : 'rgba(255,255,255,0.07)', color: 'white', fontSize: '13.5px',
               lineHeight: '1.6', border: '1px solid rgba(255,255,255,0.1)'
             }}>
-              {msg.content}
+              {msg.image && (
+                <a href={msg.image} target="_blank" rel="noreferrer">
+                  <img src={msg.image} alt="User attachment" style={{ width: '100%', borderRadius: 8, marginBottom: 8, maxHeight: 150, objectFit: 'cover' }} />
+                </a>
+              )}
+              {msg.content && <div>{msg.content}</div>}
               {msg.actions && msg.actions.map((action, idx) => (
                 <button
                   key={idx}
@@ -170,14 +243,51 @@ const AIChat = () => {
         )}
       </div>
 
-      {/* Input */}
-      <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)' }}>
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} style={{ display: 'flex', gap: '10px' }}>
+      {/* Image Preview & Input */}
+      <div style={{ borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)' }}>
+        {imagePreview && (
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ position: 'relative', width: 60, height: 60, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button 
+                type="button" 
+                onClick={() => { setImageFile(null); setImagePreview(null); }}
+                style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', padding: 2, cursor: 'pointer' }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Image attached</span>
+          </div>
+        )}
+        
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} style={{ display: 'flex', gap: '10px', padding: '16px' }}>
           <input
-            type="text" value={input} onChange={e => setInput(e.target.value)} placeholder="Ask your trading assistant..."
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            ref={fileInputRef}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) handleImageSelect(e.target.files[0]);
+            }}
+          />
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()}
+            style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title="Upload Image"
+          >
+            <ImageIcon size={18} />
+          </button>
+          
+          <input
+            type="text" value={input} onChange={e => setInput(e.target.value)} 
+            onPaste={handlePaste}
+            placeholder="Ask or paste image here..."
             style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '12px 16px', color: 'white', fontSize: '13px', outline: 'none' }}
           />
-          <button type="submit" disabled={isLoading || !input.trim()} style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer' }}>
+          
+          <button type="submit" disabled={isLoading || (!input.trim() && !imageFile)} style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isLoading || (!input.trim() && !imageFile) ? 0.5 : 1 }}>
             <Send size={18} />
           </button>
         </form>
