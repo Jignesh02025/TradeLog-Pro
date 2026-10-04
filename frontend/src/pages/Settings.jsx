@@ -1,8 +1,14 @@
-import React from 'react'
-import { Settings as SettingsIcon, Trash2, Globe, CreditCard, Shield } from 'lucide-react'
+import React, { useState } from 'react'
+import { Settings as SettingsIcon, Trash2, Globe, CreditCard, Shield, Lock } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 const Settings = ({ settings, onUpdateSettings, onClearData }) => {
   const currencies = ['USD', 'INR', 'EUR', 'GBP']
+  
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordStatus, setPasswordStatus] = useState(null)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   const setCurrency = (c) => {
     onUpdateSettings({ ...settings, defaultCurrency: c })
@@ -11,6 +17,35 @@ const Settings = ({ settings, onUpdateSettings, onClearData }) => {
   const setRisk = (val) => {
     const num = parseFloat(val) || 0
     onUpdateSettings({ ...settings, riskPercentage: num })
+  }
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: 'error', message: 'Passwords do not match' })
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordStatus({ type: 'error', message: 'Password must be at least 6 characters' })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+    setPasswordStatus(null)
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+
+    setIsUpdatingPassword(false)
+
+    if (error) {
+      setPasswordStatus({ type: 'error', message: error.message })
+    } else {
+      setPasswordStatus({ type: 'success', message: 'Password updated successfully!' })
+      setNewPassword('')
+      setConfirmPassword('')
+    }
   }
 
   return (
@@ -86,6 +121,58 @@ const Settings = ({ settings, onUpdateSettings, onClearData }) => {
               <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>%</span>
             </div>
           </div>
+        </div>
+
+        {/* Password Reset */}
+        <div className="glass-card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.1)', color: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Lock size={20} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700 }}>Change Password</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Update your account password securely.</p>
+            </div>
+          </div>
+          
+          <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 300 }}>
+            <input 
+              type="password" 
+              className="form-input" 
+              placeholder="New Password" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <input 
+              type="password" 
+              className="form-input" 
+              placeholder="Confirm New Password" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {passwordStatus && (
+              <div style={{ 
+                padding: '8px 12px', 
+                borderRadius: 6, 
+                fontSize: 13, 
+                background: passwordStatus.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                color: passwordStatus.type === 'error' ? 'var(--accent-red)' : '#22c55e',
+                border: `1px solid ${passwordStatus.type === 'error' ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`
+              }}>
+                {passwordStatus.message}
+              </div>
+            )}
+            <button 
+              type="submit" 
+              className="btn-primary"
+              disabled={isUpdatingPassword}
+              style={{ padding: '10px 16px', opacity: isUpdatingPassword ? 0.7 : 1 }}
+            >
+              {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
         </div>
 
         {/* Security & Data */}
