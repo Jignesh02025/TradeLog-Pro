@@ -50,7 +50,7 @@ const TradeForm = ({ initialData, onSubmit, onCancel, isModal }) => {
   useEffect(() => {
     if (initialData) {
       setForm({
-        date: initialData.date,
+        date: initialData.date ? String(initialData.date).substring(0, 10) : '',
         pair: initialData.pair || '',
         type: initialData.type,
         entryPrice: String(initialData.entryPrice),

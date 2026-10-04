@@ -27,7 +27,15 @@ export function isJpyPair(pair) {
  */
 export function calculatePips(pair, entryPrice, exitPrice, type) {
   if (isNaN(entryPrice) || isNaN(exitPrice)) return 0
-  const multiplier = isJpyPair(pair) ? 100 : 10_000
+  
+  const normalized = pair.replace('/', '').toUpperCase()
+  let multiplier = 10_000
+  if (normalized.endsWith('JPY')) {
+    multiplier = 100
+  } else if (normalized.startsWith('XAU')) {
+    multiplier = 10
+  }
+
   const rawPips = (exitPrice - entryPrice) * multiplier
   return type === 'Sell' ? -rawPips : rawPips
 }
