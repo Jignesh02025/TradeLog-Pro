@@ -6,7 +6,7 @@ const { Pool } = require('pg');
 const helmet = require('helmet');
 const path = require('path');
 
-dotenv.config(); // loads backend/.env
+dotenv.config({ path: path.join(__dirname, '.env') }); // ensures backend/.env is loaded
 
 // Extremely robust key loading: trim whitespace and strip quotes
 const apiKey = process.env.GROQ_API_KEY 
@@ -68,6 +68,13 @@ app.post('/api/query', async (req, res) => {
   }
 
   try {
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('host:port') || process.env.DATABASE_URL.trim() === '') {
+      return res.status(500).json({ error: "Database not configured. Please update DATABASE_URL in your backend/.env file with your actual Supabase connection string." });
+    }
+    if (!apiKey || apiKey === 'your_groq_api_key') {
+      return res.status(500).json({ error: "AI not configured. Please update GROQ_API_KEY in your backend/.env file." });
+    }
+
     console.log(`[${new Date().toISOString()}] Processing: "${question}" for user ${userId}`);
 
     // 1. Generate SQL
@@ -76,7 +83,7 @@ app.post('/api/query', async (req, res) => {
         { role: 'system', content: GROQ_SYSTEM_PROMPT },
         { role: 'user', content: question },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.8-27b',
       temperature: 0,
     });
 
@@ -107,7 +114,7 @@ app.post('/api/query', async (req, res) => {
           content: `Question: ${question}\nData: ${JSON.stringify(result.rows)}` 
         },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.8-27b',
       temperature: 0.5,
     });
 
@@ -133,6 +140,13 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('host:port') || process.env.DATABASE_URL.trim() === '') {
+      return res.status(500).json({ error: "Database not configured. Please update DATABASE_URL in your backend/.env file with your actual Supabase connection string." });
+    }
+    if (!apiKey || apiKey === 'your_groq_api_key') {
+      return res.status(500).json({ error: "AI not configured. Please update GROQ_API_KEY in your backend/.env file." });
+    }
+
     console.log(`[${new Date().toISOString()}] Chat Request: "${question}" for user ${userId}`);
 
     // 1. Check Cache (Only for single questions, not history-based)
@@ -324,7 +338,7 @@ Provide a direct answer.
 
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: 'llama-3.3-70b-versatile',
+      model: 'qwen/qwen3.8-27b',
       max_tokens: 200,
       temperature: 0.4,
     });
