@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import AddTrade from './pages/AddTrade'
@@ -14,6 +14,7 @@ import useTrades from './hooks/useTrades'
 import { Menu, Loader2 } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AIChat from './components/AIChat'
+import { applyTheme } from './utils/themes'
 
 const AppContent = () => {
   const [page, setPage] = useState('dashboard')
@@ -27,6 +28,13 @@ const AppContent = () => {
     deleteTrade, importTrades, clearAllTrades, stats, loading: tradesLoading,
     refreshTrades 
   } = useTrades()
+
+  // Apply theme dynamically to root element
+  useEffect(() => {
+    if (settings) {
+      applyTheme(settings.theme || 'midnight', settings.customTheme)
+    }
+  }, [settings?.theme, settings?.customTheme])
 
   const navigate = (p, data = null) => {
     setPage(p)
@@ -90,7 +98,7 @@ const AppContent = () => {
           alignItems: 'center', gap: 12,
           padding: '14px 20px',
           borderBottom: '1px solid var(--border-color)',
-          background: 'linear-gradient(180deg, #0c1322 0%, #0a0f1e 100%)',
+          background: 'var(--topbar-bg, linear-gradient(180deg, #0c1322 0%, #0a0f1e 100%))',
           position: 'sticky', top: 0, zIndex: 40,
           boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
         }}>
@@ -98,7 +106,7 @@ const AppContent = () => {
             id="mobile-menu-btn"
             onClick={() => setSidebarOpen(true)}
             style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-color)',
               borderRadius: 9, cursor: 'pointer', color: 'var(--text-primary)',
               width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
@@ -109,17 +117,17 @@ const AppContent = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+              background: 'var(--accent-gradient, linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 10px rgba(59,130,246,0.4)', flexShrink: 0,
+              boxShadow: '0 2px 10px var(--accent-glow, rgba(59,130,246,0.4))', flexShrink: 0,
             }}>
               <span style={{ fontSize: 14 }}>📈</span>
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                Trade<span style={{ background: 'linear-gradient(135deg,#60a5fa,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Log</span> Pro
+                Trade<span style={{ background: 'var(--text-gradient, linear-gradient(135deg,#60a5fa,#a78bfa))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Log</span> Pro
               </div>
-              <div style={{ fontSize: 9, color: '#475569', fontWeight: 600, letterSpacing: '0.06em' }}>CLOUD EDITION</div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.06em' }}>CLOUD EDITION</div>
             </div>
           </div>
           {tradesLoading && page !== 'add-trade' && (

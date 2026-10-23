@@ -27,13 +27,13 @@ const Sidebar = ({ activePage, onNavigate, onOpenImport }) => {
     <aside 
       className="sidebar"
       style={{
-        background: 'linear-gradient(180deg, #0c1322 0%, #0a0f1e 100%)',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
-      display: 'flex', flexDirection: 'column',
-      position: 'sticky', top: 0,
-      animation: 'fadeInLeft 0.45s cubic-bezier(0.22,1,0.36,1) both',
-      overflow: 'hidden',
-    }}>
+        background: 'var(--sidebar-bg, linear-gradient(180deg, #0c1322 0%, #0a0f1e 100%))',
+        borderRight: '1px solid var(--border-color)',
+        display: 'flex', flexDirection: 'column',
+        position: 'sticky', top: 0,
+        animation: 'fadeInLeft 0.45s cubic-bezier(0.22,1,0.36,1) both',
+        overflow: 'hidden',
+      }}>
 
       {/* Decorative glow blobs */}
       <div style={{
@@ -52,7 +52,7 @@ const Sidebar = ({ activePage, onNavigate, onOpenImport }) => {
       {/* ─── Logo ─── */}
       <div style={{
         padding: '22px 20px 18px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid var(--border-color)',
         position: 'relative',
         animation: 'fadeIn 0.5s ease both',
       }}>
@@ -81,7 +81,7 @@ const Sidebar = ({ activePage, onNavigate, onOpenImport }) => {
           <div>
             <div style={{ fontWeight: 800, fontSize: 15.5, letterSpacing: '-0.025em', lineHeight: 1.2 }}>
               Trade<span style={{
-                background: 'linear-gradient(135deg, #60a5fa, #a78bfa)',
+                background: 'var(--text-gradient, linear-gradient(135deg, #60a5fa, #a78bfa))',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -236,8 +236,8 @@ const Sidebar = ({ activePage, onNavigate, onOpenImport }) => {
       {/* ─── User section ─── */}
       <div style={{
         padding: '14px 14px 16px',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
-        background: 'rgba(0,0,0,0.15)',
+        borderTop: '1px solid var(--border-color)',
+        background: 'var(--sidebar-user-bg, rgba(0,0,0,0.15))',
         backdropFilter: 'blur(8px)',
         animation: 'fadeIn 0.6s ease both',
         animationDelay: '500ms',

@@ -4,11 +4,13 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { calculatePips, calculateProfit, getPipValue, calculateRR } from '../utils/forexCalculations'
 import useLocalStorage from './useLocalStorage'
+import { DEFAULT_CUSTOM_THEME } from '../utils/themes'
 
 const DEFAULT_SETTINGS = {
   defaultCurrency: 'USD',
   riskPercentage: 1.0,
-  theme: 'dark',
+  theme: 'midnight',
+  customTheme: DEFAULT_CUSTOM_THEME,
 }
 
 function useTrades() {
@@ -20,17 +22,28 @@ function useTrades() {
   // Settings Migration & Initialization
   useEffect(() => {
     const s = settings
+    let updated = false
+    let newSettings = { ...s }
+
     if (s && s.currency && !s.defaultCurrency) {
-      setSettings({
-        ...settings,
-        defaultCurrency: s.currency,
-        riskPercentage: s.riskPercentage || 1.0,
-      })
-    } else if (s && !s.riskPercentage) {
-      setSettings({
-        ...settings,
-        riskPercentage: 1.0
-      })
+      newSettings.defaultCurrency = s.currency
+      updated = true
+    }
+    if (s && !s.riskPercentage) {
+      newSettings.riskPercentage = 1.0
+      updated = true
+    }
+    if (s && !s.theme) {
+      newSettings.theme = 'midnight'
+      updated = true
+    }
+    if (s && !s.customTheme) {
+      newSettings.customTheme = DEFAULT_CUSTOM_THEME
+      updated = true
+    }
+
+    if (updated) {
+      setSettings(newSettings)
     }
   }, [settings, setSettings])
 
