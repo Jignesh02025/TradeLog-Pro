@@ -34,66 +34,66 @@ function useTrades() {
     }
   }, [settings, setSettings])
 
-  // Fetch trades from Supabase on mount or user change
-  useEffect(() => {
+  const fetchTrades = async () => {
     if (!user) {
       setTrades([])
       setLoading(false)
       return
     }
 
-    const fetchTrades = async () => {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('trades')
-        .select('*')
-        .order('date', { ascending: false })
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('trades')
+      .select('*')
+      .order('date', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching trades:', error)
-      } else {
-        // Map snake_case to camelCase
-        const mapped = (data || []).map(t => {
-          const entry = Number(t.entry_price)
-          const exit = Number(t.exit_price)
-          const lots = Number(t.lot_size)
+    if (error) {
+      console.error('Error fetching trades:', error)
+    } else {
+      // Map snake_case to camelCase
+      const mapped = (data || []).map(t => {
+        const entry = Number(t.entry_price)
+        const exit = Number(t.exit_price)
+        const lots = Number(t.lot_size)
 
-          let pips = Number(t.pips)
-          let profitLoss = Number(t.profit_loss)
-          let pipValue = Number(t.pip_value)
+        let pips = Number(t.pips)
+        let profitLoss = Number(t.profit_loss)
+        let pipValue = Number(t.pip_value)
 
-          if (!t.manual_override) {
-            pips = calculatePips(t.pair, entry, exit, t.type)
-            profitLoss = calculateProfit(pips, pipValue)
-          }
+        if (!t.manual_override) {
+          pips = calculatePips(t.pair, entry, exit, t.type)
+          profitLoss = calculateProfit(pips, pipValue)
+        }
 
-          return {
-            id: t.id,
-            date: t.date,
-            pair: t.pair,
-            type: t.type,
-            lotSize: lots,
-            entryPrice: entry,
-            exitPrice: exit,
-            stopLoss: (t.stop_loss !== null && t.stop_loss !== undefined) ? Number(t.stop_loss) : undefined,
-            takeProfit: (t.take_profit !== null && t.take_profit !== undefined) ? Number(t.take_profit) : undefined,
-            pips,
-            pipValue,
-            profitLoss,
-            manualOverride: t.manual_override,
-            riskReward: t.risk_reward ? Number(t.risk_reward) : 0,
-            tradeResult: t.trade_result,
-            notes: t.notes || '',
-            screenshots: t.screenshot_url ? t.screenshot_url.split(',') : [],
-            createdAt: t.created_at
-          }
-        })
-        console.log('[FRONTEND] Fetched trades from Supabase:', mapped)
-        setTrades(mapped)
-      }
-      setLoading(false)
+        return {
+          id: t.id,
+          date: t.date,
+          pair: t.pair,
+          type: t.type,
+          lotSize: lots,
+          entryPrice: entry,
+          exitPrice: exit,
+          stopLoss: (t.stop_loss !== null && t.stop_loss !== undefined) ? Number(t.stop_loss) : undefined,
+          takeProfit: (t.take_profit !== null && t.take_profit !== undefined) ? Number(t.take_profit) : undefined,
+          pips,
+          pipValue,
+          profitLoss,
+          manualOverride: t.manual_override,
+          riskReward: t.risk_reward ? Number(t.risk_reward) : 0,
+          tradeResult: t.trade_result,
+          notes: t.notes || '',
+          screenshots: t.screenshot_url ? t.screenshot_url.split(',') : [],
+          createdAt: t.created_at
+        }
+      })
+      console.log('[FRONTEND] Fetched trades from Supabase:', mapped)
+      setTrades(mapped)
     }
+    setLoading(false)
+  }
 
+  // Fetch trades from Supabase on mount or user change
+  useEffect(() => {
     fetchTrades()
   }, [user])
 
@@ -388,7 +388,7 @@ function useTrades() {
     }
   }, [trades])
 
-  return { trades, settings, setSettings, addTrade, updateTrade, deleteTrade, importTrades, clearAllTrades, stats, loading }
+  return { trades, settings, setSettings, addTrade, updateTrade, deleteTrade, importTrades, clearAllTrades, stats, loading, refreshTrades: fetchTrades }
 }
 
 export default useTrades

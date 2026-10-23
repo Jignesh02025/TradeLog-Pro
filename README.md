@@ -55,8 +55,17 @@ node index.js
 
 ### 3. MT5 Integration (Choose One)
 
-#### Option A: MT5 Expert Advisor (Recommended — No installation required)
-1. Copy [TradeLogProEA.mq5](file:///c:/Trading%20Journal/mt5/TradeLogProEA.mq5) to your MT5 Terminal's Experts folder:
+#### Option A: Direct Cloud Sync (Easiest — Direct in Browser via MetaApi)
+1. In the TradeLog Pro web app, navigate to **Connect MT5**.
+2. Under the **Cloud Direct Sync** tab, enter:
+   - **MT5 Login ID**
+   - **Password** (Master or Investor/Read-Only password)
+   - **Broker Server Name** (e.g., `Exness-MT5Real`, `MetaQuotes-Demo`)
+   - Free **MetaApi Token** (get your free trial token in 30 seconds from [app.metaapi.cloud/token](https://app.metaapi.cloud/token))
+3. Click **Connect & Sync MT5 Trades Now** — trades, pips, SL/TP, and Risk:Reward ratios sync directly without keeping any desktop software open!
+
+#### Option B: MT5 Expert Advisor (Local MT5 Terminal)
+1. Copy [TradeLogProEA.mq5](file:///c:/Trader%20Log/TradeLog-Pro/mt5/TradeLogProEA.mq5) to your MT5 Terminal's Experts folder:
    - In MT5, go to **File** -> **Open Data Folder**.
    - Navigate to `MQL5/Experts/`.
    - Paste `TradeLogProEA.mq5` into this folder.
@@ -69,9 +78,9 @@ node index.js
    - Add your API URL: `http://localhost:5000` (or your production API URL).
 4. Run the EA:
    - Drag `TradeLogProEA` from the Navigator panel to any active chart.
-   - Enter your `InpUserId` (get this from the Profile page of your Trading Journal app) in the Inputs tab.
+   - Enter your `InpUserId` in the Inputs tab.
 
-#### Option B: Python Sync Script (Alternative)
+#### Option C: Python Sync Script (Local Bridge)
 ```bash
 # Open MetaTrader 5 first, then:
 cd mt5

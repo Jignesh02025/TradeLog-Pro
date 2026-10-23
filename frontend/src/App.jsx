@@ -24,7 +24,8 @@ const AppContent = () => {
   const { user, loading: authLoading } = useAuth()
   const { 
     trades, settings, setSettings, addTrade, updateTrade, 
-    deleteTrade, importTrades, clearAllTrades, stats, loading: tradesLoading 
+    deleteTrade, importTrades, clearAllTrades, stats, loading: tradesLoading,
+    refreshTrades 
   } = useTrades()
 
   const navigate = (p, data = null) => {
@@ -62,7 +63,7 @@ const AppContent = () => {
       case 'help':
         return <HelpGuide />
       case 'connect-mt5':
-        return <ConnectMT5 />
+        return <ConnectMT5 onSyncSuccess={refreshTrades} onNavigate={navigate} />
       default:
         return <Dashboard trades={trades} stats={stats} settings={settings} onNavigate={navigate} />
     }

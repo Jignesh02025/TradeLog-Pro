@@ -426,6 +426,249 @@ app.post('/api/trades/bulk', async (req, res) => {
   }
 });
 
+// --- MetaApi MT5 Cloud Sync Endpoints ---
+
+app.get('/api/mt5/config', (req, res) => {
+  res.json({
+    hasServerToken: !!(process.env.METAAPI_TOKEN && process.env.METAAPI_TOKEN.trim().length > 0)
+  });
+});
+
+app.post('/api/mt5/cloud-sync', async (req, res) => {
+  const { userId, login, password, server, metaApiToken, syncDays = 90 } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'User ID is required' });
+  }
+  if (!login || !password || !server) {
+    return res.status(400).json({ error: 'MT5 Login ID, Password, and Broker Server are required' });
+  }
+
+  const token = (metaApiToken && metaApiToken.trim()) || process.env.METAAPI_TOKEN;
+  if (!token) {
+    return res.status(400).json({
+      error: 'MetaApi Token is missing. Please provide your MetaApi API token (get a free one at https://app.metaapi.cloud/token) or set METAAPI_TOKEN in backend/.env.'
+    });
+  }
+
+  let client;
+  let connection;
+  try {
+    const MetaApi = require('metaapi.cloud-sdk').default;
+    const metaApi = new MetaApi(token);
+
+    console.log(`[METAAPI] Initiating Cloud Sync for MT5 login: ${login}, server: ${server}`);
+
+    // 1. Search for existing account under this token
+    let account;
+    try {
+      const accounts = await metaApi.metatraderAccountApi.getAccountsWithInfiniteScrollPagination();
+      account = accounts.find(a => String(a.login) === String(login) && a.server?.toLowerCase() === server.toLowerCase());
+    } catch (lookupErr) {
+      console.log('[METAAPI] Account lookup notice:', lookupErr.message);
+    }
+
+    // 2. Create account if not already provisioned
+    if (!account) {
+      console.log(`[METAAPI] Registering new cloud MT5 account: TradeLog-${login}`);
+      account = await metaApi.metatraderAccountApi.createAccount({
+        name: `TradeLog-${login}`,
+        type: 'cloud-g2',
+        login: String(login),
+        password: password,
+        server: server,
+        platform: 'mt5',
+        application: 'TradeLogPro'
+      });
+    }
+
+    // 3. Deploy if not deployed
+    if (account.state !== 'DEPLOYED') {
+      console.log('[METAAPI] Deploying account container...');
+      await account.deploy();
+    }
+
+    // 4. Wait for connection to broker terminal
+    console.log('[METAAPI] Waiting for MT5 account to connect...');
+    await account.waitConnected();
+
+    // 5. Connect RPC client and synchronize
+    console.log('[METAAPI] Connecting RPC client...');
+    connection = account.getRPCConnection();
+    await connection.connect();
+
+    console.log('[METAAPI] Synchronizing trade history...');
+    await connection.waitSynchronized();
+
+    // 6. Fetch deals within requested time range
+    const days = parseInt(syncDays, 10) || 90;
+    const startTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const endTime = new Date();
+
+    console.log(`[METAAPI] Fetching deals from ${startTime.toISOString()} to ${endTime.toISOString()}`);
+    const deals = await connection.getDealsByTimeRange(startTime, endTime);
+    console.log(`[METAAPI] Retrieved ${deals ? deals.length : 0} raw deals from broker`);
+
+    if (!deals || deals.length === 0) {
+      return res.json({ success: true, count: 0, message: 'No deals found in this date range.' });
+    }
+
+    // 7. Match Entry & Exit deals
+    // In MT5: DEAL_ENTRY_IN is entry, DEAL_ENTRY_OUT is exit
+    const entryDealsByPosition = {};
+    for (const d of deals) {
+      if (d.entryType === 'DEAL_ENTRY_IN') {
+        entryDealsByPosition[d.positionId] = d;
+      }
+    }
+
+    const tradesToSync = [];
+    for (const deal of deals) {
+      // Process exit deals
+      if (deal.entryType === 'DEAL_ENTRY_OUT' || deal.entryType === 'DEAL_ENTRY_INOUT' || deal.entryType === 'DEAL_ENTRY_OUT_BY') {
+        const totalProfit = (Number(deal.profit) || 0) + (Number(deal.commission) || 0) + (Number(deal.swap) || 0);
+
+        const entryDeal = entryDealsByPosition[deal.positionId];
+        const entryPrice = entryDeal ? Number(entryDeal.price) : Number(deal.price);
+        const exitPrice = Number(deal.price);
+
+        // Determine trade type (Buy / Sell)
+        let tradeType = 'Buy';
+        if (entryDeal) {
+          tradeType = entryDeal.type === 'DEAL_TYPE_BUY' ? 'Buy' : 'Sell';
+        } else {
+          tradeType = deal.type === 'DEAL_TYPE_SELL' ? 'Buy' : 'Sell';
+        }
+
+        // Pips calculation
+        const symbol = deal.symbol || '';
+        let multiplier = 10000;
+        if (symbol.includes('JPY')) {
+          multiplier = 100;
+        } else if (symbol.includes('XAU') || symbol.includes('GOLD')) {
+          multiplier = 10;
+        } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
+          multiplier = 1;
+        }
+
+        const diff = exitPrice - entryPrice;
+        let pips = (tradeType === 'Buy' ? diff : -diff) * multiplier;
+        pips = Math.round(pips * 10) / 10;
+
+        const pipValue = pips !== 0 ? Math.round((totalProfit / pips) * 100) / 100 : 0;
+
+        // Parse SL/TP if recorded in comment or exit reason
+        let stopLoss = 0;
+        let takeProfit = 0;
+        if (deal.comment) {
+          const slMatch = deal.comment.match(/\[sl\s+([\d.]+)\]/i);
+          const tpMatch = deal.comment.match(/\[tp\s+([\d.]+)\]/i);
+          if (slMatch) stopLoss = parseFloat(slMatch[1]);
+          if (tpMatch) takeProfit = parseFloat(tpMatch[1]);
+        }
+
+        if (deal.reason === 'DEAL_REASON_SL' && stopLoss === 0) {
+          stopLoss = exitPrice;
+        } else if (deal.reason === 'DEAL_REASON_TP' && takeProfit === 0) {
+          takeProfit = exitPrice;
+        }
+
+        // Risk:Reward
+        let riskReward = 0;
+        if (stopLoss > 0 && takeProfit > 0 && entryPrice > 0) {
+          const risk = tradeType === 'Buy' ? entryPrice - stopLoss : stopLoss - entryPrice;
+          const reward = tradeType === 'Buy' ? takeProfit - entryPrice : entryPrice - takeProfit;
+          if (risk > 0 && reward > 0) {
+            riskReward = Math.round((reward / risk) * 100) / 100;
+          }
+        }
+
+        const dealTime = deal.time ? new Date(deal.time).toISOString() : new Date().toISOString();
+
+        tradesToSync.push({
+          date: dealTime,
+          pair: symbol,
+          type: tradeType,
+          lot_size: Number(deal.volume) || 0,
+          entry_price: entryPrice,
+          exit_price: exitPrice,
+          stop_loss: stopLoss,
+          take_profit: takeProfit,
+          pips: pips,
+          pip_value: pipValue,
+          profit_loss: totalProfit,
+          risk_reward: riskReward,
+          notes: `MT5 Deal: ${deal.id} | Pos: ${deal.positionId} | ${deal.reason || 'Closed via MT5'}`,
+          external_id: `MT5_${deal.id}`
+        });
+      }
+    }
+
+    console.log(`[METAAPI] Processed ${tradesToSync.length} closed trades to persist`);
+
+    if (tradesToSync.length === 0) {
+      return res.json({ success: true, count: 0, message: 'No closed trades found in the specified date range.' });
+    }
+
+    // 8. Insert/Update PostgreSQL
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    for (const trade of tradesToSync) {
+      await client.query(
+        `INSERT INTO trades (
+          user_id, date, pair, type, lot_size, entry_price, exit_price, stop_loss, take_profit, pips, pip_value, profit_loss, risk_reward, trade_result, notes, external_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        ON CONFLICT (external_id) DO UPDATE SET
+          profit_loss = EXCLUDED.profit_loss,
+          exit_price = EXCLUDED.exit_price,
+          entry_price = EXCLUDED.entry_price,
+          stop_loss = EXCLUDED.stop_loss,
+          take_profit = EXCLUDED.take_profit,
+          risk_reward = EXCLUDED.risk_reward,
+          trade_result = EXCLUDED.trade_result`,
+        [
+          userId,
+          trade.date,
+          trade.pair,
+          trade.type,
+          trade.lot_size,
+          trade.entry_price,
+          trade.exit_price,
+          trade.stop_loss,
+          trade.take_profit,
+          trade.pips,
+          trade.pip_value,
+          trade.profit_loss,
+          trade.risk_reward,
+          trade.profit_loss >= 0 ? 'Win' : 'Loss',
+          trade.notes,
+          trade.external_id
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      count: tradesToSync.length,
+      sample: tradesToSync.slice(0, 3)
+    });
+
+  } catch (error) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
+    console.error('[METAAPI CLOUD SYNC ERROR]:', error);
+    res.status(500).json({
+      error: 'MT5 Cloud Sync Failed',
+      details: error.message || String(error)
+    });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {
     console.log(`Server running on port ${port}`);
